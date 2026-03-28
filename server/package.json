@@ -1,0 +1,19 @@
+{
+  "name": "sensemap-server",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.6.7",
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.4",
+    "express": "^4.22.1",
+    "mongoose": "^8.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  }
+}

@@ -1,0 +1,79 @@
+/* ─── Reset ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── Design Tokens ──────────────────────────── */
+:root {
+  /* Background layers */
+  --bg-base:    #0b0f1a;
+  --bg-surface: #111827;
+  --bg-raised:  #1a2235;
+  --bg-overlay: #1e2d45;
+
+  /* Borders */
+  --border-subtle:  rgba(255, 255, 255, 0.07);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-strong:  rgba(255, 255, 255, 0.20);
+
+  /* Glass fills */
+  --glass-sm: rgba(255, 255, 255, 0.04);
+  --glass-md: rgba(255, 255, 255, 0.08);
+
+  /* Brand palette */
+  --blue:       #3b82f6;
+  --blue-light: #60a5fa;
+  --blue-muted: rgba(59, 130, 246, 0.15);
+  --teal:       #0ea5e9;
+  --green:      #10b981;
+  --green-light:#34d399;
+  --amber:      #f59e0b;
+  --amber-light:#fbbf24;
+  --red:        #ef4444;
+  --purple:     #8b5cf6;
+
+  /* Text */
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #475569;
+
+  /* Typography */
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-head: 'Syne', system-ui, sans-serif;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.65);
+}
+
+/* ─── Base ───────────────────────────────────── */
+body {
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
+
+/* ─── Utility Classes ────────────────────────── */
+.text-secondary { color: var(--text-secondary); }
+.text-muted     { color: var(--text-muted); }
+.font-head      { font-family: var(--font-head); }
+
+/* ─── Transitions ────────────────────────────── */
+.transition { transition: all 0.2s ease; }
