@@ -77,3 +77,30 @@ body {
 
 /* ─── Transitions ────────────────────────────── */
 .transition { transition: all 0.2s ease; }
+/* ── Leaflet popup dark theme override ── */
+.leaflet-popup-content-wrapper {
+  background: #111827 !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.65) !important;
+  color: #f1f5f9 !important;
+  padding: 0 !important;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+.leaflet-popup-tip {
+  background: #111827 !important;
+}
+.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  font-size: 18px !important;
+  top: 6px !important;
+  right: 8px !important;
+}
+.leaflet-control-attribution {
+  background: rgba(17,24,39,0.75) !important;
+  color: #475569 !important;
+  font-size: 10px !important;
+}

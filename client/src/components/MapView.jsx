@@ -1,206 +1,252 @@
-import { useEffect, useRef, useCallback } from 'react'
-import {
-GoogleMap,
-useJsApiLoader,
-Marker,
-DirectionsRenderer,
-InfoWindow,
-} from '@react-google-maps/api'
-import { useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
+import L from 'leaflet'
 import { useMapContext } from '../context/MapContext'
-import { useRoute } from '../hooks/useRoute'
-import { useLocation } from '../hooks/useLocation'
 import { POIS, CATEGORIES, CAMPUS_CENTER, CAMPUS_BOUNDS } from '../data/campusData'
 import styles from './MapView.module.css'
 
-// Dark-mode styled Google Map
-const MAP_STYLES = [
-{ elementType: 'geometry', stylers: [{ color: '#0f172a' }] },
-{ elementType: 'labels.text.stroke', stylers: [{ color: '#0f172a' }] },
-{ elementType: 'labels.text.fill', stylers: [{ color: '#64748b' }] },
-{ featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
-{ featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#334155' }] },
-{ featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
-{ featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#1e3a5f' }] },
-{ featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c2340' }] },
-{ featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#334155' }] },
-{ featureType: 'poi', stylers: [{ visibility: 'off' }] },
-{ featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0f2d1a' }] },
-{ featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#111827' }] },
-{ featureType: 'transit', stylers: [{ visibility: 'off' }] },
-]
-
-const MAP_OPTIONS = {
-disableDefaultUI: true,
-styles: MAP_STYLES,
-gestureHandling: 'greedy',
-minZoom: 15,
-maxZoom: 21,
-restriction: {
-latLngBounds: CAMPUS_BOUNDS,
-strictBounds: false,
-},
-}
-
-const LIBRARIES = ['places', 'geometry']
-
-export default function MapView() {
-const {
-mapInstance, setMapInstance,
-userLocation,
-destination, setDestination,
-route,
-isSimulating,
-activeCategories,
-} = useMapContext()
-
-const { calculateRoute } = useRoute()
-const { startTracking, enableMotion } = useLocation()
-
-const [selectedPoi, setSelectedPoi] = useState(null)
-const simRef = useRef(null)
-const simStepRef = useRef(0)
-
-const { isLoaded, loadError } = useJsApiLoader({
-googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-libraries: LIBRARIES,
+// Fix Leaflet default icon broken by Vite
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-// Recalculate route when destination changes
-useEffect(() => {
-if (destination) calculateRoute()
-}, [destination])
-
-// Demo simulation
-useEffect(() => {
-if (!isSimulating || !route?.directions) return
-const path = route.directions.routes[0].overview_path
-simStepRef.current = 0
-simRef.current = setInterval(() => {
-simStepRef.current++
-if (simStepRef.current >= path.length) {
-clearInterval(simRef.current)
-return
-}
-}, 150)
-return () => clearInterval(simRef.current)
-}, [isSimulating, route])
-
-const onMapLoad = useCallback((map) => {
-setMapInstance(map)
-map.fitBounds(CAMPUS_BOUNDS)
-}, [])
-
-const handlePoiClick = (poi) => {
-setSelectedPoi(poi)
-setDestination(poi)
+// Creates a colored circle marker icon for each POI category
+function makePinIcon(color, size = 14) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:${size}px;height:${size}px;border-radius:50%;
+      background:${color};border:2.5px solid rgba(255,255,255,0.85);
+      box-shadow:0 2px 6px rgba(0,0,0,0.5);
+    "></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  })
 }
 
-const visiblePois = activeCategories.size === 0
-? POIS
-: POIS.filter((p) => activeCategories.has(p.category))
+// Blue pulsing dot for user location
+const USER_ICON = L.divIcon({
+  className: '',
+  html: `
+    <div style="position:relative;width:20px;height:20px">
+      <div style="
+        position:absolute;inset:0;border-radius:50%;
+        background:rgba(59,130,246,0.25);
+        animation:pulse-ring 1.5s ease-out infinite;
+      "></div>
+      <div style="
+        position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        width:12px;height:12px;border-radius:50%;
+        background:#3b82f6;border:2.5px solid #fff;
+        box-shadow:0 2px 6px rgba(0,0,0,0.5);
+      "></div>
+    </div>
+    <style>
+      @keyframes pulse-ring {
+        0%{transform:scale(0.5);opacity:1}
+        100%{transform:scale(2.5);opacity:0}
+      }
+    </style>
+  `,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+})
 
-if (loadError) {
-return ( <div className={styles.error}> <div className={styles.errorCard}> <div className={styles.errorIcon}>⚠️</div> <h2>Map failed to load</h2> <p>Check your <code>VITE_GOOGLE_MAPS_API_KEY</code></p> </div> </div>
-)
+// Inner component that can access the Leaflet map instance via useMap()
+function MapController({ userLocation, destination, route }) {
+  const map = useMap()
+  const { setMapInstance } = useMapContext()
+  const prevUserLoc = useRef(null)
+  const animFrameRef = useRef(null)
+  const markerRef = useRef(null)
+
+  // Give MapContext access to the Leaflet map instance
+  useEffect(() => {
+    setMapInstance(map)
+  }, [map])
+
+  // Smoothly animate the user marker between GPS ticks using lerp + rAF
+  const animateToLocation = useCallback((from, to, durationMs = 900) => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+    const start = performance.now()
+
+    const step = (now) => {
+      const t = Math.min((now - start) / durationMs, 1)
+      const eased = 1 - Math.pow(1 - t, 3) // ease-out cubic
+      const lat = from.lat + (to.lat - from.lat) * eased
+      const lng = from.lng + (to.lng - from.lng) * eased
+
+      if (markerRef.current) {
+        markerRef.current.setLatLng([lat, lng])
+      }
+
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(step)
+      }
+    }
+
+    animFrameRef.current = requestAnimationFrame(step)
+  }, [])
+
+  // When GPS gives a new fix, animate smoothly instead of teleporting
+  useEffect(() => {
+    if (!userLocation) return
+    if (prevUserLoc.current) {
+      animateToLocation(prevUserLoc.current, userLocation, 900)
+    } else if (markerRef.current) {
+      markerRef.current.setLatLng([userLocation.lat, userLocation.lng])
+    }
+    prevUserLoc.current = userLocation
+  }, [userLocation])
+
+  // Pan camera to follow user
+  useEffect(() => {
+    if (userLocation && map) {
+      map.panTo([userLocation.lat, userLocation.lng], { animate: true, duration: 0.8 })
+    }
+  }, [userLocation, map])
+
+  // Fly to destination when selected
+  useEffect(() => {
+    if (destination && map) {
+      map.flyTo([destination.lat, destination.lng], 19, { duration: 1.2 })
+    }
+  }, [destination])
+
+  return (
+    <>
+      {userLocation && (
+        <Marker
+          position={[userLocation.lat, userLocation.lng]}
+          icon={USER_ICON}
+          ref={markerRef}
+          zIndexOffset={1000}
+        />
+      )}
+    </>
+  )
 }
 
-if (!isLoaded) {
-return ( <div className={styles.loading}> <div className={styles.spinner} /> <span>Loading SOE CUSAT map…</span> </div>
-)
-}
+export default function MapView() {
+  const {
+    userLocation,
+    destination, setDestination,
+    route,
+    activeCategories,
+    mapInstance,
+  } = useMapContext()
 
-return ( <div className={styles.mapWrap}> <GoogleMap
-     mapContainerClassName={styles.map}
-     center={CAMPUS_CENTER}
-     zoom={17}
-     options={MAP_OPTIONS}
-     onLoad={onMapLoad}
-   >
-{userLocation && (
-<Marker
-position={userLocation}
-icon={{
-path: window.google.maps.SymbolPath.CIRCLE,
-scale: 9,
-fillColor: '#3b82f6',
-fillOpacity: 1,
-strokeColor: '#ffffff',
-strokeWeight: 2.5,
-}}
-zIndex={1000}
-title="You are here"
-/>
-)}
+  const [selectedPoi, setSelectedPoi] = useState(null)
+  const watchIdRef = useRef(null)
+  const motionRef = useRef(false)
 
-```
-    {visiblePois.map((poi) => (
-      <Marker
-        key={poi.id}
-        position={{ lat: poi.lat, lng: poi.lng }}
-        onClick={() => handlePoiClick(poi)}
-        icon={{
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: destination?.id === poi.id ? 10 : 7,
-          fillColor: CATEGORIES[poi.category].color,
-          fillOpacity: destination?.id === poi.id ? 1 : 0.85,
-          strokeColor: destination?.id === poi.id ? '#ffffff' : 'rgba(255,255,255,0.4)',
-          strokeWeight: destination?.id === poi.id ? 2.5 : 1.5,
-        }}
-        zIndex={destination?.id === poi.id ? 900 : 100}
-      />
-    ))}
+  const visiblePois = activeCategories.size === 0
+    ? POIS
+    : POIS.filter((p) => activeCategories.has(p.category))
 
-    {selectedPoi && (
-      <InfoWindow
-        position={{ lat: selectedPoi.lat, lng: selectedPoi.lng }}
-        onCloseClick={() => setSelectedPoi(null)}
+  // ── Real GPS tracking ──
+  const startTracking = () => {
+    if (!navigator.geolocation) return alert('Geolocation not supported')
+    if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current)
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        // MapController's useEffect picks this up and animates the dot
+        // We update context; MapController reads it
+        // We use a custom event so MapController can interpolate independently
+        window.dispatchEvent(new CustomEvent('gps-update', {
+          detail: { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        }))
+      },
+      (err) => console.warn('GPS error:', err.message),
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+    )
+  }
+
+  // ── Simple route path from userLocation to destination ──
+  const routePath = route?.path
+    ? route.path
+    : (userLocation && destination)
+      ? [[userLocation.lat, userLocation.lng], [destination.lat, destination.lng]]
+      : null
+
+  const bounds = [
+    [CAMPUS_BOUNDS.south, CAMPUS_BOUNDS.west],
+    [CAMPUS_BOUNDS.north, CAMPUS_BOUNDS.east],
+  ]
+
+  return (
+    <div className={styles.mapWrap}>
+      <MapContainer
+        center={[CAMPUS_CENTER.lat, CAMPUS_CENTER.lng]}
+        zoom={17}
+        maxZoom={21}
+        minZoom={15}
+        maxBounds={bounds}
+        maxBoundsViscosity={0.85}
+        className={styles.map}
+        zoomControl={false}
       >
-        <div className={styles.infoWindow}>
-          <div className={styles.infoIcon}>{CATEGORIES[selectedPoi.category].icon}</div>
-          <div className={styles.infoName}>{selectedPoi.name}</div>
-          <div className={styles.infoDesc}>{selectedPoi.description}</div>
-          <button
-            className={styles.infoNavBtn}
-            onClick={() => { setDestination(selectedPoi); setSelectedPoi(null) }}
+        {/* Dark tile layer — Stadia Alidade Dark, no API key needed */}
+        <TileLayer
+          url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a>'
+          maxZoom={21}
+        />
+
+        <MapController
+          userLocation={userLocation}
+          destination={destination}
+          route={route}
+        />
+
+        {/* POI markers */}
+        {visiblePois.map((poi) => (
+          <Marker
+            key={poi.id}
+            position={[poi.lat, poi.lng]}
+            icon={makePinIcon(
+              CATEGORIES[poi.category].color,
+              destination?.id === poi.id ? 18 : 13
+            )}
+            eventHandlers={{ click: () => { setSelectedPoi(poi); setDestination(poi) } }}
+            zIndexOffset={destination?.id === poi.id ? 900 : 100}
           >
-            Navigate here
-          </button>
-        </div>
-      </InfoWindow>
-    )}
+            <Popup className={styles.leafletPopup}>
+              <div className={styles.infoWindow}>
+                <div className={styles.infoIcon}>{CATEGORIES[poi.category].icon}</div>
+                <div className={styles.infoName}>{poi.name}</div>
+                <div className={styles.infoDesc}>{poi.description}</div>
+                <button
+                  className={styles.infoNavBtn}
+                  onClick={() => setDestination(poi)}
+                >
+                  Navigate here
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
-    {route?.directions && (
-      <DirectionsRenderer
-        directions={route.directions}
-        options={{
-          suppressMarkers: true,
-          polylineOptions: {
-            strokeColor: '#3b82f6',
-            strokeWeight: 5,
-            strokeOpacity: 0.85,
-          },
-        }}
-      />
-    )}
-  </GoogleMap>
+        {/* Route line */}
+        {routePath && (
+          <Polyline
+            positions={routePath}
+            pathOptions={{ color: '#3b82f6', weight: 5, opacity: 0.85, dashArray: '10,6' }}
+          />
+        )}
+      </MapContainer>
 
-  <div className={styles.controls}>
-    <button className={styles.ctrlBtn} onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 17) + 1)}>+</button>
-    <button className={styles.ctrlBtn} onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 17) - 1)}>−</button>
-    <button className={styles.ctrlBtn} onClick={() => mapInstance?.fitBounds(CAMPUS_BOUNDS)}>⊕</button>
-
-    {/* GPS */}
-    <button className={styles.ctrlBtn} onClick={startTracking} title="GPS">
-      📡
-    </button>
-
-    {/* Motion */}
-    <button className={styles.ctrlBtn} onClick={enableMotion} title="Motion">
-      🧭
-    </button>
-  </div>
-</div>
-
-)
+      {/* Floating zoom + GPS controls */}
+      <div className={styles.controls}>
+        <button className={styles.ctrlBtn} onClick={() => mapInstance?.zoomIn()}>+</button>
+        <button className={styles.ctrlBtn} onClick={() => mapInstance?.zoomOut()}>−</button>
+        <button className={styles.ctrlBtn} onClick={() => mapInstance?.fitBounds(bounds)} title="Fit campus">⊕</button>
+        <button className={styles.ctrlBtn} onClick={startTracking} title="Track GPS">📡</button>
+      </div>
+    </div>
+  )
 }

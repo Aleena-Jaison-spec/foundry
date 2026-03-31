@@ -1,120 +1,76 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useMapContext } from '../context/MapContext'
 import { CAMPUS_CENTER } from '../data/campusData'
 
 export function useLocation() {
-  const { setUserLocation } = useMapContext()
-
+  const { setUserLocation, mapInstance } = useMapContext()
   const watchIdRef = useRef(null)
   const motionEnabledRef = useRef(false)
+  const prevLocRef = useRef(null)
 
-  /* ---------------- GPS TRACKING ---------------- */
+  // Listen for GPS updates dispatched from MapView
+  useEffect(() => {
+    const handler = (e) => {
+      const newLoc = e.detail
+      setUserLocation(newLoc)
+      prevLocRef.current = newLoc
+    }
+    window.addEventListener('gps-update', handler)
+    return () => window.removeEventListener('gps-update', handler)
+  }, [setUserLocation])
 
-  const startTracking = () => {
+  const startTracking = useCallback(() => {
     if (!navigator.geolocation) {
-      console.warn('Geolocation not supported — using campus default')
       setUserLocation(CAMPUS_CENTER)
       return
     }
-
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current)
+    }
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        setUserLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        })
+        const newLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserLocation(newLoc)
+        prevLocRef.current = newLoc
+        if (mapInstance) mapInstance.panTo([newLoc.lat, newLoc.lng])
       },
       (err) => {
-        console.warn('Location error:', err.message)
+        console.warn('GPS error:', err.message)
         setUserLocation(CAMPUS_CENTER)
       },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 10000,
-      }
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     )
-  }
+  }, [setUserLocation, mapInstance])
 
-  const stopTracking = () => {
+  const stopTracking = useCallback(() => {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current)
       watchIdRef.current = null
     }
-  }
-
-  /* ---------------- SINGLE LOCATION ---------------- */
-
-  const getOnce = () => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        resolve(CAMPUS_CENTER)
-        return
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) =>
-          resolve({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          }),
-        () => resolve(CAMPUS_CENTER),
-        { enableHighAccuracy: true, timeout: 8000 }
-      )
-    })
-  }
-
-  /* ---------------- ACCELEROMETER ---------------- */
-
-  const handleMotion = (event) => {
-    if (!motionEnabledRef.current) return
-
-    const x = event.accelerationIncludingGravity?.x || 0
-    const y = event.accelerationIncludingGravity?.y || 0
-
-    setUserLocation((prev) => ({
-      lat: prev.lat + y * 0.00001,
-      lng: prev.lng + x * 0.00001,
-    }))
-  }
-
-  const startMotion = () => {
-    motionEnabledRef.current = true
-    window.addEventListener('devicemotion', handleMotion)
-  }
-
-  const enableMotion = async () => {
-    try {
-      if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        const permission = await DeviceMotionEvent.requestPermission()
-        if (permission === 'granted') startMotion()
-      } else {
-        startMotion()
-      }
-    } catch (err) {
-      console.warn('Motion permission denied', err)
-    }
-  }
-
-  const stopMotion = () => {
-    motionEnabledRef.current = false
-    window.removeEventListener('devicemotion', handleMotion)
-  }
-
-  /* ---------------- CLEANUP ---------------- */
-
-  useEffect(() => {
-    return () => {
-      stopTracking()
-      stopMotion()
-    }
   }, [])
 
-  return {
-    startTracking,
-    stopTracking,
-    getOnce,
-    enableMotion,
-    stopMotion,
-  }
+  const enableMotion = useCallback(async () => {
+    try {
+      if (typeof DeviceMotionEvent?.requestPermission === 'function') {
+        const perm = await DeviceMotionEvent.requestPermission()
+        if (perm !== 'granted') return
+      }
+      motionEnabledRef.current = true
+      window.addEventListener('devicemotion', (e) => {
+        if (!motionEnabledRef.current) return
+        const x = e.accelerationIncludingGravity?.x || 0
+        const y = e.accelerationIncludingGravity?.y || 0
+        setUserLocation((prev) => ({
+          lat: prev.lat + y * 0.00001,
+          lng: prev.lng + x * 0.00001,
+        }))
+      })
+    } catch (err) {
+      console.warn('Motion denied', err)
+    }
+  }, [setUserLocation])
+
+  useEffect(() => () => stopTracking(), [stopTracking])
+
+  return { startTracking, stopTracking, enableMotion }
 }
