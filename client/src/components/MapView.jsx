@@ -249,10 +249,10 @@ export default function MapView() {
       >
         {/* Dark base tiles */}
         <TileLayer
-          url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
-          maxZoom={21}
-        />
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+           attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
+             maxZoom={19}
+/>
 
         {/* ── Floor plan image overlay — NEW ── */}
         <FloorImageOverlay />
