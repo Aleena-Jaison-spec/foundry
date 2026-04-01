@@ -1,301 +1,244 @@
-// Real GPS coordinates for SOE CUSAT, Thrikkakara, Kochi, Kerala
-// Centre: ~10.0437° N, 76.3234° E
+// ─────────────────────────────────────────────────────────────────────────────
+// campusData.js  →  client/src/data/campusData.js
+//
+// GPS coordinates set to SOE CUSAT, Thrikkakara, Kochi, Kerala
+// Centre: 10.04417, 76.32833  (10°02′39″N  76°19′42″E)
+//
+// ⚠️  Fine-tune imageBounds after you see the overlay in the browser.
+//     Zoom in on your specific CS building and adjust north/south/east/west
+//     until the floor plan walls line up with the real building on the map.
+// ─────────────────────────────────────────────────────────────────────────────
 
-export const CAMPUS_CENTER = { lat: 10.0437, lng: 76.3234 }
+// ── Campus GPS centre (SOE CUSAT main building area) ─────────────────────────
+export const CAMPUS_CENTER = { lat: 10.04417, lng: 76.32833 }
 
+// Outer bounding box — keeps Leaflet locked to the campus
 export const CAMPUS_BOUNDS = {
-  north: 10.0470,
-  south: 10.0400,
-  east:  76.3270,
-  west:  76.3195,
+  north: 10.04600,
+  south: 10.04230,
+  east:  76.33100,
+  west:  76.32560,
 }
 
-export const CATEGORIES = {
-  academic:  { label: 'Academic',   color: '#3b82f6', icon: '📚' },
-  lab:       { label: 'Lab',        color: '#8b5cf6', icon: '🔬' },
-  admin:     { label: 'Admin',      color: '#f59e0b', icon: '🏛️' },
-  facility:  { label: 'Facility',   color: '#10b981', icon: '⚙️' },
-  library:   { label: 'Library',    color: '#06b6d4', icon: '📖' },
-  food:      { label: 'Food',       color: '#ef4444', icon: '🍽️' },
-  sports:    { label: 'Sports',     color: '#f97316', icon: '⚽' },
-  hostel:    { label: 'Hostel',     color: '#ec4899', icon: '🏠' },
-}
-
-// All POIs are based on real SOE CUSAT campus layout
-export const POIS = [
-  // ── Entrance & Admin ──────────────────────────────────────
+// ── Floor definitions ─────────────────────────────────────────────────────────
+// imagePath    → file in client/public/floors/
+// imageBounds  → [[south, west], [north, east]] GPS corners of the image
+//                Start with CAMPUS_BOUNDS values, then fine-tune visually.
+// imageOpacity → 0.0–1.0  (0.9 = slightly see-through, tiles show context)
+// ─────────────────────────────────────────────────────────────────────────────
+export const FLOORS = [
   {
-    id: 'main-gate',
-    name: 'Main Gate',
-    category: 'facility',
-    floor: 'G',
-    lat: 10.0418,
-    lng: 76.3215,
-    description: 'Primary campus entrance from NH Bypass road',
-    openHours: 'Open 24/7',
+    id:           'ground',
+    label:        'Ground Floor',
+    shortLabel:   'G',
+    imagePath:    null,
+    imageBounds:  null,
+    imageOpacity: 0.90,
   },
   {
-    id: 'admin-block',
-    name: 'Administrative Block',
-    category: 'admin',
-    floor: 'G',
-    lat: 10.0435,
-    lng: 76.3225,
-    description: 'Principal office, Dean, Registrar & examination cell',
-    openHours: 'Mon–Fri 9AM–5PM',
-  },
-
-  // ── Academic Departments ───────────────────────────────────
-  {
-    id: 'cs-dept',
-    name: 'Computer Science Dept.',
-    category: 'academic',
-    floor: '1',
-    lat: 10.0445,
-    lng: 76.3240,
-    description: 'CS & IT faculty rooms, classrooms 101–115',
-    openHours: 'Mon–Sat 8AM–6PM',
+    id:           'first',
+    label:        'First Floor',
+    shortLabel:   '1',
+    imagePath:    '/floors/first_floor.png',
+    // These bounds cover the CS building footprint at SOE CUSAT.
+    // Fine-tune these 4 values until the image aligns with the building outline.
+    imageBounds:  [
+      [10.04290, 76.32590],   // SW corner  [lat, lng]
+      [10.04540, 76.33060],   // NE corner  [lat, lng]
+    ],
+    imageOpacity: 0.90,
   },
   {
-    id: 'ec-dept',
-    name: 'Electronics & Comm. Dept.',
-    category: 'academic',
-    floor: '1',
-    lat: 10.0448,
-    lng: 76.3248,
-    description: 'EC faculty rooms, classrooms 116–130',
-    openHours: 'Mon–Sat 8AM–6PM',
-  },
-  {
-    id: 'ee-dept',
-    name: 'Electrical Engineering Dept.',
-    category: 'academic',
-    floor: '2',
-    lat: 10.0451,
-    lng: 76.3235,
-    description: 'EE faculty rooms, classrooms 201–212',
-    openHours: 'Mon–Sat 8AM–6PM',
-  },
-  {
-    id: 'me-dept',
-    name: 'Mechanical Engineering Dept.',
-    category: 'academic',
-    floor: '1',
-    lat: 10.0440,
-    lng: 76.3252,
-    description: 'ME faculty rooms, classrooms 131–145',
-    openHours: 'Mon–Sat 8AM–6PM',
-  },
-  {
-    id: 'civil-dept',
-    name: 'Civil Engineering Dept.',
-    category: 'academic',
-    floor: '2',
-    lat: 10.0455,
-    lng: 76.3244,
-    description: 'Civil faculty rooms, classrooms 213–225',
-    openHours: 'Mon–Sat 8AM–6PM',
-  },
-  {
-    id: 'safety-dept',
-    name: 'Safety & Fire Dept.',
-    category: 'academic',
-    floor: '2',
-    lat: 10.0458,
-    lng: 76.3230,
-    description: 'Safety Engineering, classrooms 226–234',
-    openHours: 'Mon–Sat 8AM–6PM',
-  },
-
-  // ── Labs ────────────────────────────────────────────────────
-  {
-    id: 'cs-lab',
-    name: 'CS Programming Lab',
-    category: 'lab',
-    floor: '1',
-    lat: 10.0443,
-    lng: 76.3237,
-    description: '60-seat lab — Python, C++, Java. Project work allowed.',
-    openHours: 'Mon–Sat 8AM–7PM',
-  },
-  {
-    id: 'network-lab',
-    name: 'Network & Security Lab',
-    category: 'lab',
-    floor: '1',
-    lat: 10.0446,
-    lng: 76.3243,
-    description: 'Cisco routers, Wireshark, cybersecurity workstations',
-    openHours: 'Mon–Fri 9AM–5PM',
-  },
-  {
-    id: 'ec-lab',
-    name: 'Electronics Lab',
-    category: 'lab',
-    floor: '1',
-    lat: 10.0449,
-    lng: 76.3251,
-    description: 'Oscilloscopes, signal generators, PCB design',
-    openHours: 'Mon–Sat 8AM–6PM',
-  },
-  {
-    id: 'robotics-lab',
-    name: 'Robotics & IoT Lab',
-    category: 'lab',
-    floor: '2',
-    lat: 10.0453,
-    lng: 76.3238,
-    description: 'Arduino, Raspberry Pi, ROS, 3D printing, drone kits',
-    openHours: 'Mon–Fri 9AM–6PM',
-  },
-  {
-    id: 'vlsi-lab',
-    name: 'VLSI Design Lab',
-    category: 'lab',
-    floor: '2',
-    lat: 10.0456,
-    lng: 76.3247,
-    description: 'Cadence, Xilinx FPGA boards, chip design tools',
-    openHours: 'Mon–Fri 9AM–5PM',
-  },
-  {
-    id: 'material-lab',
-    name: 'Materials Testing Lab',
-    category: 'lab',
-    floor: 'G',
-    lat: 10.0438,
-    lng: 76.3255,
-    description: 'Universal testing machine, material analysis equipment',
-    openHours: 'Mon–Fri 9AM–5PM',
-  },
-
-  // ── Library & Learning ─────────────────────────────────────
-  {
-    id: 'library',
-    name: 'Central Library (NLB)',
-    category: 'library',
-    floor: 'G',
-    lat: 10.0433,
-    lng: 76.3242,
-    description: '50,000+ books, journals, e-resources. Silent study zones.',
-    openHours: 'Mon–Sat 8:30AM–7PM',
-  },
-
-  // ── Food ───────────────────────────────────────────────────
-  {
-    id: 'triveni',
-    name: 'Triveni Coffee House',
-    category: 'food',
-    floor: 'G',
-    lat: 10.0430,
-    lng: 76.3228,
-    description: 'Main campus canteen. Kerala meals, snacks & beverages.',
-    openHours: 'Mon–Sat 7:30AM–8PM',
-  },
-  {
-    id: 'mini-canteen',
-    name: 'Mini Canteen (Near Labs)',
-    category: 'food',
-    floor: '1',
-    lat: 10.0447,
-    lng: 76.3233,
-    description: 'Tea, coffee, snacks between classes',
-    openHours: 'Mon–Fri 8AM–6PM',
-  },
-
-  // ── Sports & Recreation ────────────────────────────────────
-  {
-    id: 'ground',
-    name: 'Sports Ground',
-    category: 'sports',
-    floor: 'G',
-    lat: 10.0425,
-    lng: 76.3250,
-    description: 'Football, cricket, athletics track',
-    openHours: 'Daily 6AM–8PM',
-  },
-  {
-    id: 'basketball',
-    name: 'Basketball Court',
-    category: 'sports',
-    floor: 'G',
-    lat: 10.0428,
-    lng: 76.3243,
-    description: 'Covered court, badminton also available',
-    openHours: 'Daily 6AM–9PM',
-  },
-
-  // ── Facilities ─────────────────────────────────────────────
-  {
-    id: 'medical',
-    name: 'Medical Centre',
-    category: 'facility',
-    floor: 'G',
-    lat: 10.0432,
-    lng: 76.3220,
-    description: 'First aid, nurse on duty, doctor 3 days/week',
-    openHours: 'Mon–Fri 9AM–5PM',
-  },
-  {
-    id: 'placement',
-    name: 'Placement Cell',
-    category: 'admin',
-    floor: '2',
-    lat: 10.0442,
-    lng: 76.3227,
-    description: 'Training, internship & recruitment coordination',
-    openHours: 'Mon–Fri 9AM–5PM',
-  },
-  {
-    id: 'auditorium',
-    name: 'Auditorium',
-    category: 'facility',
-    floor: 'G',
-    lat: 10.0436,
-    lng: 76.3233,
-    description: '1000-seat air-conditioned auditorium',
-    openHours: 'Event days only',
-  },
-  {
-    id: 'parking',
-    name: 'Parking Area',
-    category: 'facility',
-    floor: 'G',
-    lat: 10.0420,
-    lng: 76.3222,
-    description: 'Two-wheeler & four-wheeler parking',
-    openHours: 'Open 24/7',
-  },
-  {
-    id: 'atm',
-    name: 'ATM',
-    category: 'facility',
-    floor: 'G',
-    lat: 10.0431,
-    lng: 76.3224,
-    description: 'SBI ATM near admin block',
-    openHours: 'Open 24/7',
-  },
-
-  // ── Hostels ────────────────────────────────────────────────
-  {
-    id: 'mens-hostel',
-    name: "Men's Hostel",
-    category: 'hostel',
-    floor: 'G',
-    lat: 10.0463,
-    lng: 76.3225,
-    description: 'Siberia Block — 4-seater rooms, WiFi, mess facility',
-    openHours: 'Residents only',
-  },
-  {
-    id: 'womens-hostel',
-    name: "Women's Hostel",
-    category: 'hostel',
-    floor: 'G',
-    lat: 10.0460,
-    lng: 76.3255,
-    description: 'Separate block — 24hr security, WiFi, mess',
-    openHours: 'Residents only',
+    id:           'second',
+    label:        'Second Floor',
+    shortLabel:   '2',
+    imagePath:    null,
+    imageBounds:  null,
+    imageOpacity: 0.90,
   },
 ]
+
+// ── POI categories ────────────────────────────────────────────────────────────
+export const CATEGORIES = {
+  classroom:  { label: 'Classroom',    icon: '📚', color: '#3b82f6' },
+  washroom:   { label: 'Washroom',     icon: '🚻', color: '#22c55e' },
+  faculty:    { label: 'Faculty Room', icon: '👨‍🏫', color: '#f59e0b' },
+  office:     { label: 'Office',       icon: '🏢', color: '#a855f7' },
+  lab:        { label: 'Lab',          icon: '🖥️',  color: '#ef4444' },
+  stairs:     { label: 'Stairs',       icon: '🪜',  color: '#64748b' },
+  openspace:  { label: 'Open Area',    icon: '⬛', color: '#334155' },
+}
+
+// ── Helpers — compute POI lat/lng from image-relative position ────────────────
+// The floor plan image spans imageBounds. Each POI's lat/lng is computed by
+// interpolating its relative position (0.0–1.0) within those bounds.
+// xRatio: 0 = left edge of image, 1 = right edge
+// yRatio: 0 = top edge of image,  1 = bottom edge
+const IB = FLOORS[1].imageBounds          // [[south,west],[north,east]]
+const imgS = IB[0][0], imgN = IB[1][0]   // south / north lat
+const imgW = IB[0][1], imgE = IB[1][1]   // west  / east  lng
+
+function pos(xRatio, yRatio) {
+  return {
+    lat: imgN - yRatio * (imgN - imgS),   // yRatio=0 → north, 1 → south
+    lng: imgW + xRatio * (imgE - imgW),   // xRatio=0 → west,  1 → east
+  }
+}
+
+// ── POIs — positioned to match your floor plan sketch ────────────────────────
+//
+// FIRST FLOOR layout:
+//   TOP ROW    → Girls Wash | CS4 | CS3 | CS2 | CS1 | Faculty Rm 1 | HOD Office | Stairs
+//   RIGHT COL  → Faculty Sudeep Sir | Faculty Rm 2 | Faculty Ancy Mam | Microprocessor Lab
+//   BOTTOM ROW → Boys Wash | CS5 | CS6 | CS7 | CS8 | Project Lab
+//
+// x=0.00 is far left, x=1.00 is far right of the floor plan image
+// y=0.00 is top,      y=1.00 is bottom of the floor plan image
+// ─────────────────────────────────────────────────────────────────────────────
+export const POIS = [
+
+  // ══ GROUND FLOOR placeholder ══════════════════════════════════════════════
+  {
+    id: 'gf-tba', name: 'Ground Floor (coming soon)',
+    description: 'Upload ground floor sketch to add rooms',
+    category: 'openspace', floor: 'ground',
+    ...pos(0.5, 0.5),
+  },
+
+  // ══ FIRST FLOOR — TOP ROW ════════════════════════════════════════════════
+  {
+    id: 'ff-girls-wash', name: "Girls' Washroom",
+    description: 'Top-left · First floor · Female students',
+    category: 'washroom', floor: 'first',
+    ...pos(0.07, 0.25),
+  },
+  {
+    id: 'ff-cs4', name: 'CS4',
+    description: 'Top row · First floor · Computer Science classroom',
+    category: 'classroom', floor: 'first',
+    ...pos(0.17, 0.25),
+  },
+  {
+    id: 'ff-cs3', name: 'CS3',
+    description: 'Top row · First floor · Computer Science classroom',
+    category: 'classroom', floor: 'first',
+    ...pos(0.28, 0.25),
+  },
+  {
+    id: 'ff-cs2', name: 'CS2',
+    description: 'Top row · First floor · Computer Science classroom',
+    category: 'classroom', floor: 'first',
+    ...pos(0.38, 0.25),
+  },
+  {
+    id: 'ff-cs1', name: 'CS1',
+    description: 'Top row · First floor · Computer Science classroom',
+    category: 'classroom', floor: 'first',
+    ...pos(0.47, 0.25),
+  },
+  {
+    id: 'ff-faculty1', name: 'Faculty Room 1',
+    description: 'Top centre · First floor · CS department faculty',
+    category: 'faculty', floor: 'first',
+    ...pos(0.57, 0.18),
+  },
+  {
+    id: 'ff-hod', name: 'Office — HOD',
+    description: 'Top centre · First floor · Head of Department',
+    category: 'office', floor: 'first',
+    ...pos(0.63, 0.28),
+  },
+  {
+    id: 'ff-stairs', name: 'Stairs',
+    description: 'Top centre-right · First floor · Main staircase',
+    category: 'stairs', floor: 'first',
+    ...pos(0.75, 0.10),
+  },
+
+  // ══ FIRST FLOOR — RIGHT COLUMN ═══════════════════════════════════════════
+  {
+    id: 'ff-sudeep', name: 'Faculty Room — Sudeep Sir',
+    description: 'Top-right · First floor · Faculty cabin',
+    category: 'faculty', floor: 'first',
+    ...pos(0.90, 0.20),
+  },
+  {
+    id: 'ff-faculty2', name: 'Faculty Room 2',
+    description: 'Right column · First floor · Faculty cabin',
+    category: 'faculty', floor: 'first',
+    ...pos(0.90, 0.42),
+  },
+  {
+    id: 'ff-ancy', name: 'Faculty Room — Ancy Mam',
+    description: 'Right column · First floor · Faculty cabin',
+    category: 'faculty', floor: 'first',
+    ...pos(0.90, 0.65),
+  },
+  {
+    id: 'ff-microprocessor', name: 'Microprocessor Lab',
+    description: 'Bottom-right · First floor · Hardware lab',
+    category: 'lab', floor: 'first',
+    ...pos(0.90, 0.82),
+  },
+
+  // ══ FIRST FLOOR — BOTTOM ROW ═════════════════════════════════════════════
+  {
+    id: 'ff-boys-wash', name: "Boys' Washroom",
+    description: 'Bottom-left · First floor · Male students',
+    category: 'washroom', floor: 'first',
+    ...pos(0.07, 0.78),
+  },
+  {
+    id: 'ff-cs5', name: 'CS5',
+    description: 'Bottom row · First floor · Computer Science classroom',
+    category: 'classroom', floor: 'first',
+    ...pos(0.17, 0.78),
+  },
+  {
+    id: 'ff-cs6', name: 'CS6',
+    description: 'Bottom row · First floor · Computer Science classroom',
+    category: 'classroom', floor: 'first',
+    ...pos(0.28, 0.78),
+  },
+  {
+    id: 'ff-cs7', name: 'CS7',
+    description: 'Bottom row · First floor · Computer Science classroom',
+    category: 'classroom', floor: 'first',
+    ...pos(0.38, 0.78),
+  },
+  {
+    id: 'ff-cs8', name: 'CS8',
+    description: 'Bottom row · First floor · Computer Science classroom',
+    category: 'classroom', floor: 'first',
+    ...pos(0.47, 0.78),
+  },
+  {
+    id: 'ff-project-lab', name: 'Project Lab',
+    description: 'Bottom centre · First floor · Student project workspace',
+    category: 'lab', floor: 'first',
+    ...pos(0.63, 0.78),
+  },
+
+  // ══ SECOND FLOOR placeholder ══════════════════════════════════════════════
+  {
+    id: 'sf-tba', name: 'Second Floor (coming soon)',
+    description: 'Upload second floor sketch to add rooms',
+    category: 'openspace', floor: 'second',
+    ...pos(0.5, 0.5),
+  },
+]
+
+// ── Corridor nodes for pathfinding ────────────────────────────────────────────
+export const CORRIDOR_NODES = {
+  first: [
+    // Central east–west corridor
+    pos(0.07, 0.50), pos(0.17, 0.50), pos(0.28, 0.50),
+    pos(0.38, 0.50), pos(0.47, 0.50), pos(0.57, 0.50),
+    pos(0.63, 0.50), pos(0.75, 0.50),
+    // Right north–south corridor
+    pos(0.82, 0.20), pos(0.82, 0.42),
+    pos(0.82, 0.65), pos(0.82, 0.82),
+  ].map(p => [p.lat, p.lng]),
+  ground: [],
+  second: [],
+}
