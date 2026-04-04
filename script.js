@@ -9,11 +9,13 @@ let currentPath = [];
 let isDragging = false;
 let startX, startY;
 
+// Animation State
+let pathPercent = 0;
+let animationId = null;
+
 /**
  * Dijkstra's Algorithm
- * Finds the shortest path using the dense node grid.
- * Because nodes are aligned horizontally and vertically, 
- * the "shortest" path will naturally be a straight line.
+ * Finds the shortest path using the node grid from mapData.js.
  */
 function dijkstra(start, end) {
     let dist = {}; 
@@ -24,7 +26,6 @@ function dijkstra(start, end) {
     dist[start] = 0;
 
     while (pq.size) {
-        // Find the node in the priority queue with the smallest distance
         let u = [...pq].reduce((min, n) => dist[n] < dist[min] ? n : min);
         pq.delete(u); 
         
@@ -45,8 +46,22 @@ function dijkstra(start, end) {
 }
 
 /**
+ * Animation Loop
+ * Gradually increases pathPercent and triggers a redraw.
+ */
+function animatePath() {
+    if (pathPercent < 100) {
+        pathPercent += 1.5; // Controls animation speed
+        render();
+        animationId = requestAnimationFrame(animatePath);
+    } else {
+        cancelAnimationFrame(animationId);
+    }
+}
+
+/**
  * Main Render Function
- * Handles the drawing of the entire floor plan and the path.
+ * Handles the drawing of the entire floor plan and the animated path.
  */
 function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -57,13 +72,13 @@ function render() {
     ctx.scale(scale, scale);
 
     // 1. DRAW BLACK OBSTACLE (Central Void)
-    // Positioned to ensure the 't' and 'b' hallway nodes pass safely above/below
     ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(450, 420, 500, 140); 
 
-    // 2. DRAW WALLS (Based on f1.png Architectural Layout)
+    // 2. DRAW WALLS (Architectural Layout)
     ctx.strokeStyle = "black"; 
     ctx.lineWidth = 5;
+    ctx.lineJoin = "round";
     
     // Outer Building Boundary
     ctx.strokeRect(50, 50, 1700, 900); 
@@ -76,7 +91,7 @@ function render() {
     ctx.stroke();
     ctx.setLineDash([]); // Reset to solid lines for room dividers
 
-    // Vertical Room Dividers (Left to Middle)
+    // Vertical Room Dividers
     for (let x of [200, 400, 600, 800, 1000, 1250]) {
         ctx.beginPath(); ctx.moveTo(x, 50); ctx.lineTo(x, 300); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(x, 950); ctx.lineTo(x, 650); ctx.stroke();
@@ -103,27 +118,42 @@ function render() {
         }
     }
 
-    // 4. DRAW NAVIGATION PATH (Red Dotted Line)
+    // 4. DRAW NAVIGATION PATH (ANIMATED RED DOTTED LINE)
     if (currentPath.length > 1) {
         ctx.beginPath(); 
         ctx.strokeStyle = "red"; 
         ctx.lineWidth = 8;
         ctx.setLineDash([10, 5]);
         
-        ctx.moveTo(nodes[currentPath[0]].x, nodes[currentPath[0]].y);
-        for (let i = 1; i < currentPath.length; i++) {
-            ctx.lineTo(nodes[currentPath[i]].x, nodes[currentPath[i]].y);
+        let totalSegments = currentPath.length - 1;
+        let visibleSegments = (pathPercent / 100) * totalSegments;
+
+        let startNode = nodes[currentPath[0]];
+        ctx.moveTo(startNode.x, startNode.y);
+
+        for (let i = 1; i <= totalSegments; i++) {
+            let node = nodes[currentPath[i]];
+            if (i <= visibleSegments) {
+                // Fully visible segment
+                ctx.lineTo(node.x, node.y);
+            } else if (i - 1 < visibleSegments) {
+                // Partially visible segment (The growing tip)
+                let lastNode = nodes[currentPath[i-1]];
+                let remain = visibleSegments - (i - 1);
+                let dx = (node.x - lastNode.x) * remain;
+                let dy = (node.y - lastNode.y) * remain;
+                ctx.lineTo(lastNode.x + dx, lastNode.y + dy);
+            }
         }
         ctx.stroke(); 
-        ctx.setLineDash([]); // Reset dash for next frame
+        ctx.setLineDash([]); 
     }
 
     ctx.restore();
 }
 
-// --- User Interaction Logic ---
+// --- Interaction Logic ---
 
-// Zooming with Mouse Wheel
 canvas.onwheel = (e) => {
     e.preventDefault();
     const zoomIntensity = 0.05;
@@ -132,7 +162,6 @@ canvas.onwheel = (e) => {
     render();
 };
 
-// Panning (Click and Drag)
 canvas.onmousedown = (e) => { 
     isDragging = true; 
     startX = e.clientX - offsetX; 
@@ -147,7 +176,6 @@ canvas.onmousemove = (e) => {
 };
 canvas.onmouseup = () => isDragging = false;
 
-// Click detection for Room Popups
 canvas.onclick = (e) => {
     const rect = canvas.getBoundingClientRect();
     const mx = (e.clientX - rect.left - offsetX) / scale;
@@ -164,7 +192,6 @@ canvas.onclick = (e) => {
     }
 };
 
-// Button Trigger
 document.getElementById('findPathBtn').onclick = () => {
     const start = document.getElementById('startSelect').value;
     const end = document.getElementById('endSelect').value;
@@ -175,18 +202,17 @@ document.getElementById('findPathBtn').onclick = () => {
     }
 
     currentPath = dijkstra(start, end);
-    render();
+    
+    // Reset and Start Animation
+    pathPercent = 0;
+    if (animationId) cancelAnimationFrame(animationId);
+    animatePath();
 };
 
-/**
- * Initialization
- * Populates UI and scales canvas to window size
- */
 function init() {
     const s1 = document.getElementById('startSelect');
     const s2 = document.getElementById('endSelect');
     
-    // Clear and Fill Select Dropdowns
     s1.innerHTML = ""; s2.innerHTML = "";
     for (let id in nodes) {
         if (nodes[id].name) {
@@ -198,7 +224,6 @@ function init() {
         }
     }
     
-    // Dynamic Canvas Resizing
     canvas.width = window.innerWidth - 350; 
     canvas.height = window.innerHeight;
     render();
