@@ -40,48 +40,46 @@ const floor = new THREE.Mesh(
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// --- 4. DRAWING THE LAYOUT (ALIGNED & ENCLOSED) ---
+// --- 4. DRAWING THE LAYOUT (ALIGNED & EXTENDED) ---
 
-// Main Outer Boundary
-addWall(850, 50, 1710, 10);   // Top Outer
-addWall(850, 950, 1710, 10);  // Bottom Outer
+// Main Outer Boundary - Extended w/ overlapping corners
+addWall(900, 50, 1810, 10);   // Top Outer (Extended right)
+addWall(900, 950, 1810, 10);  // Bottom Outer (Extended right)
 addWall(50, 500, 10, 910);    // Left Outer
-addWall(1750, 500, 10, 910);  // Right Outer
+addWall(1800, 500, 10, 910);  // Right Outer (Moved right to seal with top/bottom)
 
-// ALIGNED ROOM FRONTS (Top Row: Girls Wash to CS1)
-// We draw a continuous front wall with gaps for doors
+// Classroom Fronts (Aligned along the hallway)
 addWall(112.5, 300, 125, 10); // Girls Wash front
 addWall(312.5, 300, 175, 10); // CS4 front
 addWall(512.5, 300, 175, 10); // CS3 front
 addWall(712.5, 300, 175, 10); // CS2 front
 addWall(912.5, 300, 175, 10); // CS1 front
 
-// ALIGNED ROOM FRONTS (Bottom Row: Boys Wash to CS8)
 addWall(112.5, 650, 125, 10); // Boys Wash front
 addWall(312.5, 650, 175, 10); // CS5 front
 addWall(512.5, 650, 175, 10); // CS6 front
 addWall(712.5, 650, 175, 10); // CS7 front
 addWall(912.5, 650, 175, 10); // CS8 front
 
-// Internal Dividers (Classrooms)
+// Internal Dividers
 for (let x of [200, 400, 600, 800, 1000]) {
     addWall(x, 175, 10, 250); // Dividers Top
-    addWall(x, 800, 10, 300); // Dividers Bottom
+    addWall(x, 800, 10, 310); // Dividers Bottom
 }
 
-// HOD & PROJECT LAB ENCLOSURE (Neat Alignment)
-addWall(1125, 300, 250, 10); // HOD Front Wall
-addWall(1125, 650, 250, 10); // Project Lab Front Wall
-addWall(1250, 175, 10, 250); // HOD Right Side Wall
-addWall(1250, 800, 10, 300); // Project Lab Right Side Wall
+// HOD & PROJECT LAB ENCLOSURE
+addWall(1125, 300, 250, 10); // HOD Front
+addWall(1125, 650, 250, 10); // Project Lab Front
+addWall(1250, 175, 10, 260); // HOD Side
+addWall(1250, 815, 10, 280); // Project Lab Side
 
-// Right Wing Dividers
-addWall(1500, 500, 10, 910); 
+// Right Wing (Sealing the corners)
+addWall(1550, 500, 10, 910); // Main hallway vertical wall
 for (let y of [230, 460, 690]) {
-    addWall(1625, y, 250, 10); 
+    addWall(1675, y, 250, 10); // Room separators extended to seal with outer right
 }
 
-// Central Corridor Obstacle (The Bar)
+// Central Corridor Obstacle
 addWall(450, 475, 500, 100, 0x1a1a1a); 
 
 // --- 5. Interactive Nodes ---
@@ -99,7 +97,7 @@ for (let id in nodes) {
         scene.add(sphere);
         clickablePoints.push(sphere);
 
-        // Text Labels
+        // Labels
         const canvas = document.createElement('canvas');
         canvas.width = 256; canvas.height = 64;
         const ctxLabel = canvas.getContext('2d');
@@ -112,7 +110,7 @@ for (let id in nodes) {
     }
 }
 
-// --- 6. Raycaster & Interaction ---
+// --- 6. Raycaster Interaction ---
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
@@ -120,15 +118,12 @@ container.addEventListener('click', (e) => {
     const rect = container.getBoundingClientRect();
     mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
     mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
-
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(clickablePoints);
-
     if (intersects.length > 0) {
-        const data = intersects[0].object.userData;
         document.getElementById('directionsPanel').innerHTML = `
-            <h3 style="color:#007bff; margin:0;">${data.name}</h3>
-            <p>Location verified in 3D space.</p>
+            <h3 style="color:#007bff; margin:0;">${intersects[0].object.userData.name}</h3>
+            <p>Digital Twin node selected.</p>
         `;
     }
 });
@@ -167,7 +162,6 @@ function animate() {
     controls.update();
     renderer.render(scene, camera);
 }
-
 function init() {
     const s1 = document.getElementById('startSelect'), s2 = document.getElementById('endSelect');
     s1.innerHTML = ""; s2.innerHTML = "";
