@@ -2,34 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Indoor Navigator Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indoor Digital Twin - Foundry</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <div class="sidebar">
-            <h2>Navigation</h2>
+            <h2>Digital Twin</h2>
             <label>Start Location:</label>
             <select id="startSelect"></select>
             
             <label>Destination:</label>
             <select id="endSelect"></select>
             
-            <button id="findPathBtn">Get Directions</button>
+            <button id="findPathBtn">Find Path</button>
             <hr>
-            <div id="directionsList">
-                <p class="placeholder">Directions will appear here...</p>
-            </div>
+            <div id="directionsPanel">Click on a blue room point to see details.</div>
         </div>
-        
-        <div class="map-area">
-            <canvas id="mapCanvas"></canvas>
-            <div id="roomPopup" class="hidden"></div>
-        </div>
+        <div class="map-area" id="container3d"></div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
     <script src="mapData.js"></script>
     <script src="script.js"></script>
-    
 </body>
 </html>

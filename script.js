@@ -1,233 +1,179 @@
-const canvas = document.getElementById('mapCanvas');
-const ctx = canvas.getContext('2d');
+// --- 1. Scene Setup ---
+const container = document.getElementById('container3d');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xffffff);
 
-// --- Global State ---
-let scale = 0.5;
-let offsetX = 50;
-let offsetY = 50;
-let currentPath = [];
-let isDragging = false;
-let startX, startY;
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 10000);
+camera.position.set(0, 1500, 1000); 
 
-// Animation State
-let pathPercent = 0;
-let animationId = null;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(container.clientWidth, container.clientHeight);
+container.appendChild(renderer.domElement);
 
-/**
- * Dijkstra's Algorithm
- * Finds the shortest path using the node grid from mapData.js.
- */
-function dijkstra(start, end) {
-    let dist = {}; 
-    let prev = {}; 
-    let pq = new Set(Object.keys(graph));
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
 
-    Object.keys(graph).forEach(n => dist[n] = Infinity); 
-    dist[start] = 0;
+// --- 2. Lighting ---
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.set(500, 1000, 500);
+scene.add(light);
 
-    while (pq.size) {
-        let u = [...pq].reduce((min, n) => dist[n] < dist[min] ? n : min);
-        pq.delete(u); 
-        
-        if (u === end) break;
+// --- 3. Geometric Constants ---
+const mapOffsetX = -850; const mapOffsetZ = -450;
+const wallH = 100;
 
-        for (let v in graph[u]) {
-            let alt = dist[u] + graph[u][v];
-            if (alt < dist[v]) { 
-                dist[v] = alt; 
-                prev[v] = u; 
-            }
-        }
-    }
-
-    let path = []; 
-    for (let at = end; at; at = prev[at]) path.push(at);
-    return path.reverse();
+function addWall(x, z, w, d, color = 0x333333) {
+    const wall = new THREE.Mesh(
+        new THREE.BoxGeometry(w, wallH, d),
+        new THREE.MeshStandardMaterial({ color: color })
+    );
+    wall.position.set(x + mapOffsetX, wallH / 2, z + mapOffsetZ);
+    scene.add(wall);
 }
 
-/**
- * Animation Loop
- * Gradually increases pathPercent and triggers a redraw.
- */
-function animatePath() {
-    if (pathPercent < 100) {
-        pathPercent += 1.5; // Controls animation speed
-        render();
-        animationId = requestAnimationFrame(animatePath);
-    } else {
-        cancelAnimationFrame(animationId);
+// Floor
+const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(3000, 2000),
+    new THREE.MeshStandardMaterial({ color: 0xffffff })
+);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+// --- 4. DRAWING THE LAYOUT (ALIGNED & ENCLOSED) ---
+
+// Main Outer Boundary
+addWall(850, 50, 1710, 10);   // Top Outer
+addWall(850, 950, 1710, 10);  // Bottom Outer
+addWall(50, 500, 10, 910);    // Left Outer
+addWall(1750, 500, 10, 910);  // Right Outer
+
+// ALIGNED ROOM FRONTS (Top Row: Girls Wash to CS1)
+// We draw a continuous front wall with gaps for doors
+addWall(112.5, 300, 125, 10); // Girls Wash front
+addWall(312.5, 300, 175, 10); // CS4 front
+addWall(512.5, 300, 175, 10); // CS3 front
+addWall(712.5, 300, 175, 10); // CS2 front
+addWall(912.5, 300, 175, 10); // CS1 front
+
+// ALIGNED ROOM FRONTS (Bottom Row: Boys Wash to CS8)
+addWall(112.5, 650, 125, 10); // Boys Wash front
+addWall(312.5, 650, 175, 10); // CS5 front
+addWall(512.5, 650, 175, 10); // CS6 front
+addWall(712.5, 650, 175, 10); // CS7 front
+addWall(912.5, 650, 175, 10); // CS8 front
+
+// Internal Dividers (Classrooms)
+for (let x of [200, 400, 600, 800, 1000]) {
+    addWall(x, 175, 10, 250); // Dividers Top
+    addWall(x, 800, 10, 300); // Dividers Bottom
+}
+
+// HOD & PROJECT LAB ENCLOSURE (Neat Alignment)
+addWall(1125, 300, 250, 10); // HOD Front Wall
+addWall(1125, 650, 250, 10); // Project Lab Front Wall
+addWall(1250, 175, 10, 250); // HOD Right Side Wall
+addWall(1250, 800, 10, 300); // Project Lab Right Side Wall
+
+// Right Wing Dividers
+addWall(1500, 500, 10, 910); 
+for (let y of [230, 460, 690]) {
+    addWall(1625, y, 250, 10); 
+}
+
+// Central Corridor Obstacle (The Bar)
+addWall(450, 475, 500, 100, 0x1a1a1a); 
+
+// --- 5. Interactive Nodes ---
+const clickablePoints = [];
+for (let id in nodes) {
+    if (nodes[id].name) {
+        const sphere = new THREE.Mesh(
+            new THREE.SphereGeometry(15),
+            new THREE.MeshStandardMaterial({ color: 0x007bff })
+        );
+        const px = nodes[id].x + mapOffsetX;
+        const pz = nodes[id].y + mapOffsetZ;
+        sphere.position.set(px, 15, pz);
+        sphere.userData = { name: nodes[id].name };
+        scene.add(sphere);
+        clickablePoints.push(sphere);
+
+        // Text Labels
+        const canvas = document.createElement('canvas');
+        canvas.width = 256; canvas.height = 64;
+        const ctxLabel = canvas.getContext('2d');
+        ctxLabel.font = 'bold 24px Arial'; ctxLabel.fillStyle = 'black'; ctxLabel.textAlign = 'center';
+        ctxLabel.fillText(nodes[id].name, 128, 40);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
+        sprite.position.set(px, 75, pz);
+        sprite.scale.set(120, 30, 1);
+        scene.add(sprite);
     }
 }
 
-/**
- * Main Render Function
- * Handles the drawing of the entire floor plan and the animated path.
- */
-function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    
-    // Apply Coordinate Transformations (Zoom & Pan)
-    ctx.translate(offsetX, offsetY); 
-    ctx.scale(scale, scale);
+// --- 6. Raycaster & Interaction ---
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
-    // 1. DRAW BLACK OBSTACLE (Central Void)
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(450, 420, 500, 140); 
+container.addEventListener('click', (e) => {
+    const rect = container.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
 
-    // 2. DRAW WALLS (Architectural Layout)
-    ctx.strokeStyle = "black"; 
-    ctx.lineWidth = 5;
-    ctx.lineJoin = "round";
-    
-    // Outer Building Boundary
-    ctx.strokeRect(50, 50, 1700, 900); 
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(clickablePoints);
 
-    // Corridor Entrances (Dashed lines represent door gaps)
-    ctx.setLineDash([160, 40]); 
-    ctx.beginPath(); 
-    ctx.moveTo(50, 300); ctx.lineTo(1250, 300); // Top corridor wall
-    ctx.moveTo(50, 650); ctx.lineTo(1250, 650); // Bottom corridor wall
-    ctx.stroke();
-    ctx.setLineDash([]); // Reset to solid lines for room dividers
-
-    // Vertical Room Dividers
-    for (let x of [200, 400, 600, 800, 1000, 1250]) {
-        ctx.beginPath(); ctx.moveTo(x, 50); ctx.lineTo(x, 300); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(x, 950); ctx.lineTo(x, 650); ctx.stroke();
+    if (intersects.length > 0) {
+        const data = intersects[0].object.userData;
+        document.getElementById('directionsPanel').innerHTML = `
+            <h3 style="color:#007bff; margin:0;">${data.name}</h3>
+            <p>Location verified in 3D space.</p>
+        `;
     }
+});
 
-    // Right Wing Layout
-    ctx.beginPath(); ctx.moveTo(1500, 50); ctx.lineTo(1500, 950); ctx.stroke();
-    for (let y of [250, 480, 750]) {
-        ctx.beginPath(); ctx.moveTo(1500, y); ctx.lineTo(1750, y); ctx.stroke();
-    }
-
-    // 3. DRAW ROOM NODES (Clickable Buttons)
-    for (let id in nodes) {
-        if (nodes[id].name) {
-            ctx.fillStyle = "#007bff"; 
-            ctx.beginPath(); 
-            ctx.arc(nodes[id].x, nodes[id].y, 12, 0, Math.PI * 2); 
-            ctx.fill();
-
-            ctx.fillStyle = "black"; 
-            ctx.font = "bold 18px Arial"; 
-            ctx.textAlign = "center";
-            ctx.fillText(nodes[id].name, nodes[id].x, nodes[id].y - 25);
-        }
-    }
-
-    // 4. DRAW NAVIGATION PATH (ANIMATED RED DOTTED LINE)
-    if (currentPath.length > 1) {
-        ctx.beginPath(); 
-        ctx.strokeStyle = "red"; 
-        ctx.lineWidth = 8;
-        ctx.setLineDash([10, 5]);
-        
-        let totalSegments = currentPath.length - 1;
-        let visibleSegments = (pathPercent / 100) * totalSegments;
-
-        let startNode = nodes[currentPath[0]];
-        ctx.moveTo(startNode.x, startNode.y);
-
-        for (let i = 1; i <= totalSegments; i++) {
-            let node = nodes[currentPath[i]];
-            if (i <= visibleSegments) {
-                // Fully visible segment
-                ctx.lineTo(node.x, node.y);
-            } else if (i - 1 < visibleSegments) {
-                // Partially visible segment (The growing tip)
-                let lastNode = nodes[currentPath[i-1]];
-                let remain = visibleSegments - (i - 1);
-                let dx = (node.x - lastNode.x) * remain;
-                let dy = (node.y - lastNode.y) * remain;
-                ctx.lineTo(lastNode.x + dx, lastNode.y + dy);
-            }
-        }
-        ctx.stroke(); 
-        ctx.setLineDash([]); 
-    }
-
-    ctx.restore();
-}
-
-// --- Interaction Logic ---
-
-canvas.onwheel = (e) => {
-    e.preventDefault();
-    const zoomIntensity = 0.05;
-    if (e.deltaY < 0) scale += zoomIntensity;
-    else scale = Math.max(0.1, scale - zoomIntensity);
-    render();
-};
-
-canvas.onmousedown = (e) => { 
-    isDragging = true; 
-    startX = e.clientX - offsetX; 
-    startY = e.clientY - offsetY; 
-};
-canvas.onmousemove = (e) => { 
-    if (isDragging) { 
-        offsetX = e.clientX - startX; 
-        offsetY = e.clientY - startY; 
-        render(); 
-    } 
-};
-canvas.onmouseup = () => isDragging = false;
-
-canvas.onclick = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left - offsetX) / scale;
-    const my = (e.clientY - rect.top - offsetY) / scale;
-
-    for (let id in nodes) {
-        if (nodes[id].name) {
-            const dist = Math.hypot(nodes[id].x - mx, nodes[id].y - my);
-            if (dist < 30) {
-                alert(`📍 Location: ${nodes[id].name}`); 
-                return;
-            }
-        }
-    }
-};
-
+// --- 7. Navigation ---
+let pathLine = null;
 document.getElementById('findPathBtn').onclick = () => {
     const start = document.getElementById('startSelect').value;
     const end = document.getElementById('endSelect').value;
-    
-    if (start === end) {
-        alert("Select two different locations.");
-        return;
-    }
+    if (pathLine) scene.remove(pathLine);
 
-    currentPath = dijkstra(start, end);
-    
-    // Reset and Start Animation
-    pathPercent = 0;
-    if (animationId) cancelAnimationFrame(animationId);
-    animatePath();
+    const pathIDs = dijkstra(start, end);
+    const points = pathIDs.map(id => new THREE.Vector3(nodes[id].x + mapOffsetX, 15, nodes[id].y + mapOffsetZ));
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    pathLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 3 }));
+    scene.add(pathLine);
 };
 
-function init() {
-    const s1 = document.getElementById('startSelect');
-    const s2 = document.getElementById('endSelect');
-    
-    s1.innerHTML = ""; s2.innerHTML = "";
-    for (let id in nodes) {
-        if (nodes[id].name) {
-            let opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = nodes[id].name;
-            s1.appendChild(opt.cloneNode(true));
-            s2.appendChild(opt);
+function dijkstra(start, end) {
+    let dist = {}; let prev = {}; let pq = new Set(Object.keys(graph));
+    Object.keys(graph).forEach(n => dist[n] = Infinity); dist[start] = 0;
+    while (pq.size) {
+        let u = [...pq].reduce((min, n) => dist[n] < dist[min] ? n : min);
+        pq.delete(u); if (u === end) break;
+        for (let v in graph[u]) {
+            let alt = dist[u] + graph[u][v];
+            if (alt < dist[v]) { dist[v] = alt; prev[v] = u; }
         }
     }
-    
-    canvas.width = window.innerWidth - 350; 
-    canvas.height = window.innerHeight;
-    render();
+    let path = []; for (let at = end; at; at = prev[at]) path.push(at);
+    return path.reverse();
 }
 
-window.onresize = init;
-init();
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+function init() {
+    const s1 = document.getElementById('startSelect'), s2 = document.getElementById('endSelect');
+    s1.innerHTML = ""; s2.innerHTML = "";
+    for (let id in nodes) if (nodes[id].name) {
+        let opt = `<option value="${id}">${nodes[id].name}</option>`;
+        s1.innerHTML += opt; s2.innerHTML += opt;
+    }
+}
+init(); animate();
