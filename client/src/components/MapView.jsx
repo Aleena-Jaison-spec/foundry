@@ -1,7 +1,7 @@
 // client/src/components/MapView.jsx — REPLACE existing
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Polyline, Marker, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { useMapContext } from '../context/MapContext'
 import { POIS, CATEGORIES, CAMPUS_CENTER, CAMPUS_BOUNDS, FLOORS } from '../data/campusData'
@@ -97,6 +97,18 @@ const END_ICON = L.divIcon({
 })
 
 // ── MapController ──────────────────────────────────────────────────────────────
+// ── Simulated GPS — for testing without being physically at CUSAT ───────────
+function SimulatedGps() {
+  useMapEvents({
+    click: (e) => {
+      window.dispatchEvent(new CustomEvent('gps-update', {
+        detail: { lat: e.latlng.lat, lng: e.latlng.lng }
+      }))
+    }
+  })
+  return null
+}
+
 function MapController({ destination }) {
   const map = useMap()
   const { setMapInstance, setUserLocation, userHeading, setUserHeading } = useMapContext()
@@ -278,6 +290,7 @@ export default function MapView({ onBack }) {
   } = useMapContext()
 
   const [isTracking, setIsTracking] = useState(false)
+  const [isSimulating, setIsSimulating] = useState(false)
   const [compassSupported, setCompassSupported] = useState(false)
   const [pickMode, setPickMode] = useState('end')
   const [startLocation, setStartLocationState] = useState(null)
@@ -412,6 +425,7 @@ export default function MapView({ onBack }) {
 
         <FloorImageOverlay />
         <MapController destination={destination} />
+        {isSimulating && <SimulatedGps />}
         <POIMarkers
           pickMode={pickMode}
           onPickStart={handlePickStart}
@@ -466,7 +480,16 @@ export default function MapView({ onBack }) {
         <button
           className={`${styles.ctrlBtn} ${isTracking ? styles.ctrlBtnActive : ''}`}
           onClick={isTracking ? stopTracking : startTracking}
+          title="Start Live GPS"
         >{isTracking ? '📡' : '📍'}</button>
+        <button
+          className={`${styles.ctrlBtn} ${isSimulating ? styles.ctrlBtnActive : ''}`}
+          onClick={() => {
+            setIsSimulating(!isSimulating)
+            if (isTracking) stopTracking()
+          }}
+          title="Simulate Location (Tap Map)"
+        >🎯</button>
         {compassSupported && (
           <button className={styles.ctrlBtn}
             onClick={() => window.dispatchEvent(new Event('enable-compass'))}>🧭</button>
