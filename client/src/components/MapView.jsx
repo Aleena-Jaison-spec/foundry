@@ -419,13 +419,15 @@ export default function MapView({ onBack }) {
           startLocation={startLocation}
         />
 
-        {/* ── Navigation Polyline: GPS → destination, updates on every GPS tick ── */}
+        {/* ── Navigation Polyline: GPS → destination ── */}
         {isNavigating && (
           <Polyline
             positions={routePath}
             pathOptions={{
               color: '#3b82f6', weight: 6, opacity: 0.92,
-              dashArray: '14,8', lineCap: 'round', lineJoin: 'round',
+              dashArray: '15, 10', 
+              lineCap: 'round', lineJoin: 'round',
+              className: styles.movingPath // Applied CSS class
             }}
           />
         )}

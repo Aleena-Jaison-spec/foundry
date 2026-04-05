@@ -199,3 +199,14 @@
   transform: translateY(0);
   background: #1d4ed8;
 }
+
+/* ── Moving Path Animation ── */
+.movingPath {
+  stroke-dasharray: 15, 12;
+  animation: sensemap-flow 0.8s linear infinite;
+}
+
+@keyframes sensemap-flow {
+  from { stroke-dashoffset: 27; }
+  to   { stroke-dashoffset: 0; }
+}
