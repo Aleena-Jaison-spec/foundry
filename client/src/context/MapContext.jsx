@@ -1,23 +1,21 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// MapContext.jsx  →  client/src/context/MapContext.jsx
-// ─────────────────────────────────────────────────────────────────────────────
+// client/src/context/MapContext.jsx — REPLACE existing
 import { createContext, useContext, useState, useCallback } from 'react'
 
 const MapContext = createContext(null)
 
 export function MapProvider({ children }) {
-  const [mapInstance,      setMapInstance]      = useState(null)
-  const [userLocation,     setUserLocation]      = useState(null)
-  const [destination,      setDestination]       = useState(null)
-  const [route,            setRoute]             = useState(null)
-  const [activeFloor,      setActiveFloor]       = useState('first')   // default = first floor
-  const [activeCategories, setActiveCategories]  = useState(new Set())
+  const [mapInstance, setMapInstance] = useState(null)
+  const [userLocation, setUserLocation] = useState(null)
+  const [userHeading, setUserHeading] = useState(0)
+  const [destination, setDestination] = useState(null)
+  const [route, setRoute] = useState(null)   // { origin, destination }
+  const [activeFloor, setActiveFloor] = useState('first')
+  const [activeCategories, setActiveCategories] = useState(new Set())
 
   const toggleCategory = useCallback((cat) => {
-    setActiveCategories((prev) => {
+    setActiveCategories(prev => {
       const next = new Set(prev)
-      if (next.has(cat)) next.delete(cat)
-      else next.add(cat)
+      next.has(cat) ? next.delete(cat) : next.add(cat)
       return next
     })
   }, [])
@@ -29,11 +27,12 @@ export function MapProvider({ children }) {
 
   return (
     <MapContext.Provider value={{
-      mapInstance,      setMapInstance,
-      userLocation,     setUserLocation,
-      destination,      setDestination,
-      route,            setRoute,
-      activeFloor,      setActiveFloor,
+      mapInstance, setMapInstance,
+      userLocation, setUserLocation,
+      userHeading, setUserHeading,
+      destination, setDestination,
+      route, setRoute,
+      activeFloor, setActiveFloor,
       activeCategories, setActiveCategories,
       toggleCategory,
       clearNavigation,

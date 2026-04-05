@@ -16,8 +16,8 @@ export const CAMPUS_CENTER = { lat: 10.04417, lng: 76.32833 }
 export const CAMPUS_BOUNDS = {
   north: 10.04600,
   south: 10.04230,
-  east:  76.33100,
-  west:  76.32560,
+  east: 76.33100,
+  west: 76.32560,
 }
 
 // ── Floor definitions ─────────────────────────────────────────────────────────
@@ -28,45 +28,45 @@ export const CAMPUS_BOUNDS = {
 // ─────────────────────────────────────────────────────────────────────────────
 export const FLOORS = [
   {
-    id:           'ground',
-    label:        'Ground Floor',
-    shortLabel:   'G',
-    imagePath:    null,
-    imageBounds:  null,
+    id: 'ground',
+    label: 'Ground Floor',
+    shortLabel: 'G',
+    imagePath: null,
+    imageBounds: null,
     imageOpacity: 0.90,
   },
   {
-    id:           'first',
-    label:        'First Floor',
-    shortLabel:   '1',
-    imagePath:    '/floors/first_floor.png',
+    id: 'first',
+    label: 'First Floor',
+    shortLabel: '1',
+    imagePath: '/floors/first_floor.png',
     // These bounds cover the CS building footprint at SOE CUSAT.
     // Fine-tune these 4 values until the image aligns with the building outline.
-    imageBounds:  [
+    imageBounds: [
       [10.04290, 76.32590],   // SW corner  [lat, lng]
       [10.04540, 76.33060],   // NE corner  [lat, lng]
     ],
     imageOpacity: 0.90,
   },
   {
-    id:           'second',
-    label:        'Second Floor',
-    shortLabel:   '2',
-    imagePath:    null,
-    imageBounds:  null,
+    id: 'second',
+    label: 'Second Floor',
+    shortLabel: '2',
+    imagePath: null,
+    imageBounds: null,
     imageOpacity: 0.90,
   },
 ]
 
 // ── POI categories ────────────────────────────────────────────────────────────
 export const CATEGORIES = {
-  classroom:  { label: 'Classroom',    icon: '📚', color: '#3b82f6' },
-  washroom:   { label: 'Washroom',     icon: '🚻', color: '#22c55e' },
-  faculty:    { label: 'Faculty Room', icon: '👨‍🏫', color: '#f59e0b' },
-  office:     { label: 'Office',       icon: '🏢', color: '#a855f7' },
-  lab:        { label: 'Lab',          icon: '🖥️',  color: '#ef4444' },
-  stairs:     { label: 'Stairs',       icon: '🪜',  color: '#64748b' },
-  openspace:  { label: 'Open Area',    icon: '⬛', color: '#334155' },
+  classroom: { label: 'Classroom', icon: '📚', color: '#3b82f6' },
+  washroom: { label: 'Washroom', icon: '🚻', color: '#22c55e' },
+  faculty: { label: 'Faculty Room', icon: '👨‍🏫', color: '#f59e0b' },
+  office: { label: 'Office', icon: '🏢', color: '#a855f7' },
+  lab: { label: 'Lab', icon: '🖥️', color: '#ef4444' },
+  stairs: { label: 'Stairs', icon: '🪜', color: '#64748b' },
+  openspace: { label: 'Open Area', icon: '⬛', color: '#334155' },
 }
 
 // ── Helpers — compute POI lat/lng from image-relative position ────────────────
@@ -78,7 +78,7 @@ const IB = FLOORS[1].imageBounds          // [[south,west],[north,east]]
 const imgS = IB[0][0], imgN = IB[1][0]   // south / north lat
 const imgW = IB[0][1], imgE = IB[1][1]   // west  / east  lng
 
-function pos(xRatio, yRatio) {
+export function pos(xRatio, yRatio) {
   return {
     lat: imgN - yRatio * (imgN - imgS),   // yRatio=0 → north, 1 → south
     lng: imgW + xRatio * (imgE - imgW),   // xRatio=0 → west,  1 → east
@@ -86,15 +86,6 @@ function pos(xRatio, yRatio) {
 }
 
 // ── POIs — positioned to match your floor plan sketch ────────────────────────
-//
-// FIRST FLOOR layout:
-//   TOP ROW    → Girls Wash | CS4 | CS3 | CS2 | CS1 | Faculty Rm 1 | HOD Office | Stairs
-//   RIGHT COL  → Faculty Sudeep Sir | Faculty Rm 2 | Faculty Ancy Mam | Microprocessor Lab
-//   BOTTOM ROW → Boys Wash | CS5 | CS6 | CS7 | CS8 | Project Lab
-//
-// x=0.00 is far left, x=1.00 is far right of the floor plan image
-// y=0.00 is top,      y=1.00 is bottom of the floor plan image
-// ─────────────────────────────────────────────────────────────────────────────
 export const POIS = [
 
   // ══ GROUND FLOOR placeholder ══════════════════════════════════════════════
@@ -110,43 +101,43 @@ export const POIS = [
     id: 'ff-girls-wash', name: "Girls' Washroom",
     description: 'Top-left · First floor · Female students',
     category: 'washroom', floor: 'first',
-    ...pos(0.07, 0.25),
+    ...pos(0.08, 0.28),
   },
   {
     id: 'ff-cs4', name: 'CS4',
     description: 'Top row · First floor · Computer Science classroom',
     category: 'classroom', floor: 'first',
-    ...pos(0.17, 0.25),
+    ...pos(0.15, 0.28),
   },
   {
     id: 'ff-cs3', name: 'CS3',
     description: 'Top row · First floor · Computer Science classroom',
     category: 'classroom', floor: 'first',
-    ...pos(0.28, 0.25),
+    ...pos(0.22, 0.28),
   },
   {
     id: 'ff-cs2', name: 'CS2',
     description: 'Top row · First floor · Computer Science classroom',
     category: 'classroom', floor: 'first',
-    ...pos(0.38, 0.25),
+    ...pos(0.31, 0.28),
   },
   {
     id: 'ff-cs1', name: 'CS1',
     description: 'Top row · First floor · Computer Science classroom',
     category: 'classroom', floor: 'first',
-    ...pos(0.47, 0.25),
+    ...pos(0.38, 0.28),
   },
   {
     id: 'ff-faculty1', name: 'Faculty Room 1',
     description: 'Top centre · First floor · CS department faculty',
     category: 'faculty', floor: 'first',
-    ...pos(0.57, 0.18),
+    ...pos(0.54, 0.15),
   },
   {
     id: 'ff-hod', name: 'Office — HOD',
     description: 'Top centre · First floor · Head of Department',
     category: 'office', floor: 'first',
-    ...pos(0.63, 0.28),
+    ...pos(0.54, 0.32),
   },
   {
     id: 'ff-stairs', name: 'Stairs',
@@ -160,25 +151,25 @@ export const POIS = [
     id: 'ff-sudeep', name: 'Faculty Room — Sudeep Sir',
     description: 'Top-right · First floor · Faculty cabin',
     category: 'faculty', floor: 'first',
-    ...pos(0.90, 0.20),
+    ...pos(0.92, 0.18),
   },
   {
     id: 'ff-faculty2', name: 'Faculty Room 2',
     description: 'Right column · First floor · Faculty cabin',
     category: 'faculty', floor: 'first',
-    ...pos(0.90, 0.42),
+    ...pos(0.92, 0.38),
   },
   {
     id: 'ff-ancy', name: 'Faculty Room — Ancy Mam',
     description: 'Right column · First floor · Faculty cabin',
     category: 'faculty', floor: 'first',
-    ...pos(0.90, 0.65),
+    ...pos(0.92, 0.62),
   },
   {
     id: 'ff-microprocessor', name: 'Microprocessor Lab',
     description: 'Bottom-right · First floor · Hardware lab',
     category: 'lab', floor: 'first',
-    ...pos(0.90, 0.82),
+    ...pos(0.92, 0.82),
   },
 
   // ══ FIRST FLOOR — BOTTOM ROW ═════════════════════════════════════════════
@@ -186,37 +177,37 @@ export const POIS = [
     id: 'ff-boys-wash', name: "Boys' Washroom",
     description: 'Bottom-left · First floor · Male students',
     category: 'washroom', floor: 'first',
-    ...pos(0.07, 0.78),
+    ...pos(0.09, 0.75),
   },
   {
     id: 'ff-cs5', name: 'CS5',
     description: 'Bottom row · First floor · Computer Science classroom',
     category: 'classroom', floor: 'first',
-    ...pos(0.17, 0.78),
+    ...pos(0.15, 0.82),
   },
   {
     id: 'ff-cs6', name: 'CS6',
     description: 'Bottom row · First floor · Computer Science classroom',
     category: 'classroom', floor: 'first',
-    ...pos(0.28, 0.78),
+    ...pos(0.22, 0.82),
   },
   {
     id: 'ff-cs7', name: 'CS7',
     description: 'Bottom row · First floor · Computer Science classroom',
     category: 'classroom', floor: 'first',
-    ...pos(0.38, 0.78),
+    ...pos(0.31, 0.82),
   },
   {
     id: 'ff-cs8', name: 'CS8',
     description: 'Bottom row · First floor · Computer Science classroom',
     category: 'classroom', floor: 'first',
-    ...pos(0.47, 0.78),
+    ...pos(0.38, 0.82),
   },
   {
     id: 'ff-project-lab', name: 'Project Lab',
     description: 'Bottom centre · First floor · Student project workspace',
     category: 'lab', floor: 'first',
-    ...pos(0.63, 0.78),
+    ...pos(0.54, 0.82),
   },
 
   // ══ SECOND FLOOR placeholder ══════════════════════════════════════════════

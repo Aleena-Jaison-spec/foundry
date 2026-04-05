@@ -1,159 +1,161 @@
+// client/src/components/Topbar.jsx
+// Navigation bar for Navigo. Contains:
+//  - Logo + back button
+//  - Search input with autocomplete
+//  - Route mode toggle (pick start → pick end)
+//  - Active floor label
+//  - GPS tracking button
+
 import { useState, useRef, useEffect } from 'react'
 import { useMapContext } from '../context/MapContext'
-import { POIS, CATEGORIES } from '../data/campusData'
+import { POIS, CATEGORIES, FLOORS } from '../data/campusData'
 import styles from './Topbar.module.css'
 
-export default function Topbar() {
+export default function Topbar({ onBack }) {
   const {
-    searchQuery, setSearchQuery,
-    setDestination, sidebarOpen, setSidebarOpen,
-    setNavPanelOpen, setQrModalOpen,
-    isSimulating, setIsSimulating,
-    clearRoute, destination,
+    destination, setDestination,
+    activeFloor, setActiveFloor,
+    route, setRoute,
   } = useMapContext()
 
-  const [suggestions, setSuggestions] = useState([])
-  const inputRef = useRef(null)
+  const [query,       setQuery]       = useState('')
+  const [results,     setResults]     = useState([])
+  const [open,        setOpen]        = useState(false)
+  const [routeMode,   setRouteMode]   = useState(false)   // true = picking route
+  const [routeOrigin, setRouteOrigin] = useState(null)    // first picked POI
+  const wrapRef = useRef(null)
 
-  const handleSearch = (q) => {
-    setSearchQuery(q)
-    if (!q.trim()) { setSuggestions([]); return }
-    const lower = q.toLowerCase()
-    const matches = POIS.filter(
-      (p) =>
-        p.name.toLowerCase().includes(lower) ||
-        p.description.toLowerCase().includes(lower) ||
-        CATEGORIES[p.category].label.toLowerCase().includes(lower)
-    ).slice(0, 8)
-    setSuggestions(matches)
-  }
-
-  const selectSuggestion = (poi) => {
-    setSearchQuery(poi.name)
-    setSuggestions([])
-    setDestination(poi)
-    setNavPanelOpen(true)
-  }
-
-  // Close suggestions on outside click
+  // ── Search autocomplete ──────────────────────────────────────────────────────
   useEffect(() => {
-    const handler = (e) => {
-      if (!e.target.closest(`.${styles.searchWrap}`)) setSuggestions([])
-    }
-    document.addEventListener('click', handler)
-    return () => document.removeEventListener('click', handler)
+    if (!query.trim()) { setResults([]); return }
+    const q = query.toLowerCase()
+    setResults(
+      POIS.filter(p =>
+        p.category !== 'openspace' &&
+        (p.name.toLowerCase().includes(q) ||
+         p.category.toLowerCase().includes(q))
+      ).slice(0, 7)
+    )
+  }, [query])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const h = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
   }, [])
 
-  // Keyboard shortcut Ctrl+K / Cmd+K
-  useEffect(() => {
-    const handler = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault()
-        inputRef.current?.focus()
+  const pickResult = (poi) => {
+    setOpen(false)
+    setQuery(poi.name)
+    setResults([])
+
+    if (routeMode) {
+      if (!routeOrigin) {
+        // First pick = origin
+        setRouteOrigin(poi)
+        setQuery('')
+      } else {
+        // Second pick = destination → compute route
+        setDestination(poi)
+        setRoute({ origin: routeOrigin, destination: poi })
+        setRouteMode(false)
+        setRouteOrigin(null)
+        setQuery('')
       }
+    } else {
+      setActiveFloor(poi.floor)
+      setDestination(poi)
     }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [])
+  }
 
-  // Group suggestions by category
-  const grouped = suggestions.reduce((acc, poi) => {
-    if (!acc[poi.category]) acc[poi.category] = []
-    acc[poi.category].push(poi)
-    return acc
-  }, {})
+  const toggleRouteMode = () => {
+    setRouteMode(r => !r)
+    setRouteOrigin(null)
+    setRoute(null)
+    setDestination(null)
+    setQuery('')
+  }
+
+  const clearAll = () => {
+    setRouteMode(false)
+    setRouteOrigin(null)
+    setRoute(null)
+    setDestination(null)
+    setQuery('')
+  }
+
+  const floorLabel = FLOORS.find(f => f.id === activeFloor)?.label || ''
+
+  const routeHint = !routeOrigin
+    ? 'Pick start room…'
+    : `From: ${routeOrigin.name} — now pick destination`
 
   return (
-    <header className={styles.topbar}>
-      {/* Logo */}
-      <div className={styles.logo}>
-        <div className={styles.logoMark}>🗺️</div>
-        <div className={styles.logoText}>
-          Sense<span>Map</span>
-          <span className={styles.logoSub}>SOE CUSAT</span>
-        </div>
-      </div>
+    <div className={styles.topbar}>
+      {/* Left: logo / back */}
+      <button className={styles.logoBtn} onClick={onBack} title="Back to Navigo home">
+        <span className={styles.logo}>Navigo</span>
+        <span className={styles.backArrow}>←</span>
+      </button>
 
-      {/* Search */}
-      <div className={styles.searchWrap} ref={inputRef}>
-        <span className={styles.searchIcon}>⌕</span>
-        <input
-          className={styles.searchInput}
-          type="text"
-          placeholder="Search rooms, labs, departments…  ⌘K"
-          value={searchQuery}
-          onChange={(e) => handleSearch(e.target.value)}
-          onKeyDown={(e) => e.key === 'Escape' && setSuggestions([])}
-        />
-        {suggestions.length > 0 && (
-          <div className={styles.suggestions}>
-            {Object.entries(grouped).map(([cat, pois]) => (
-              <div key={cat}>
-                <div className={styles.suggCat}>
-                  {CATEGORIES[cat].icon} {CATEGORIES[cat].label}
+      {/* Centre: search + route hint */}
+      <div className={styles.searchWrap} ref={wrapRef}>
+        <div className={styles.searchRow}>
+          <span className={styles.searchIcon}>🔍</span>
+          <input
+            className={styles.searchInput}
+            placeholder={routeMode ? routeHint : 'Search rooms, labs, offices…'}
+            value={query}
+            onChange={e => { setQuery(e.target.value); setOpen(true) }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && results[0]) pickResult(results[0])
+              if (e.key === 'Escape') setOpen(false)
+            }}
+          />
+          {(query || destination || routeMode) && (
+            <button className={styles.clearBtn} onClick={clearAll}>✕</button>
+          )}
+        </div>
+
+        {/* Autocomplete dropdown */}
+        {open && results.length > 0 && (
+          <div className={styles.dropdown}>
+            {results.map(poi => (
+              <div
+                key={poi.id}
+                className={styles.dropItem}
+                onMouseDown={() => pickResult(poi)}
+              >
+                <span className={styles.dropIcon}>{CATEGORIES[poi.category]?.icon}</span>
+                <div className={styles.dropText}>
+                  <span className={styles.dropName}>{poi.name}</span>
+                  <span className={styles.dropSub}>{poi.description}</span>
                 </div>
-                {pois.map((poi) => (
-                  <div
-                    key={poi.id}
-                    className={styles.suggItem}
-                    onClick={() => selectSuggestion(poi)}
-                  >
-                    <span
-                      className={styles.suggDot}
-                      style={{ background: CATEGORIES[poi.category].color }}
-                    />
-                    <span className={styles.suggName}>{poi.name}</span>
-                    <span className={styles.suggFloor}>
-                      Floor {poi.floor === 'G' ? 'GF' : poi.floor}
-                    </span>
-                  </div>
-                ))}
+                <span className={styles.dropFloor}>
+                  {FLOORS.find(f => f.id === poi.floor)?.shortLabel} Fl
+                </span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Action buttons */}
-      <div className={styles.actions}>
-        <button
-          className={`${styles.btn} ${isSimulating ? styles.btnActive : ''}`}
-          onClick={() => setIsSimulating(!isSimulating)}
-          title="Demo simulation"
-        >
-          {isSimulating ? (
-            <><span className={styles.pulseDot} /> Simulating</>
-          ) : (
-            <>▶ Demo</>
-          )}
-        </button>
+      {/* Right: controls */}
+      <div className={styles.controls}>
+        {/* Floor label */}
+        <span className={styles.floorLabel}>{floorLabel}</span>
 
+        {/* Route mode toggle */}
         <button
-          className={styles.btn}
-          onClick={() => setQrModalOpen(true)}
-          title="Share map"
+          className={`${styles.ctrlBtn} ${routeMode ? styles.ctrlActive : ''}`}
+          onClick={toggleRouteMode}
+          title={routeMode ? 'Cancel route' : 'Plan a route'}
         >
-          ⬡ Share
-        </button>
-
-        {destination && (
-          <button
-            className={`${styles.btn} ${styles.btnDanger}`}
-            onClick={clearRoute}
-            title="Clear route"
-          >
-            ✕ Clear
-          </button>
-        )}
-
-        <button
-          className={`${styles.btn} ${sidebarOpen ? styles.btnActive : ''}`}
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          title="Toggle panel"
-        >
-          ☰
+          {routeMode ? '✕ Route' : '🗺 Route'}
         </button>
       </div>
-    </header>
+    </div>
   )
 }

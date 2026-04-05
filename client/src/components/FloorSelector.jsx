@@ -9,8 +9,8 @@ export default function FloorSelector() {
 
   return (
     <div style={{
-      position: 'absolute', left: '14px', bottom: '48px',
-      zIndex: 1000, display: 'flex', flexDirection: 'column',
+      position: 'absolute', left: '14px', bottom: '180px',
+      zIndex: 1050, display: 'flex', flexDirection: 'column',
       alignItems: 'center', gap: '4px',
     }}>
       <span style={{

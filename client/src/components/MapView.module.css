@@ -16,8 +16,8 @@
 .controls {
   position: absolute;
   right: 14px;
-  bottom: 48px;
-  z-index: 1000;
+  bottom: 180px;
+  z-index: 1050;
   display: flex;
   flex-direction: column;
   gap: 6px;
